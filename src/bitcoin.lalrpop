@@ -13,11 +13,14 @@ pub Term: i64 = {
 };
 
 pub Factor: i64 = {
-     <n:Num> => n,
-     "-" <f:Factor> => -f, // Unary minus at the Factor level
+     <i:Integer> => i,
     "(" <e:Expr> ")" => e,
 };
 
+pub Integer: i64 = {
+     <n:Num> => n,
+     "-" <n:Num> => -n, // Unary minus at the Integer level
+}
 
 Num: i64 = <s:r"[0-9]+"> => {
     let integer = i64::from_str(s).unwrap();
