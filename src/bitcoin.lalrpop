@@ -5,6 +5,7 @@ grammar;
 pub Expr: String = {
     <m:MathExpr> => m.to_string(),
     <a:AssignExpr> => "(".to_owned() + &a.0 + ", " + &a.1 + ")",
+    <s:SymbolTable> => s,
 };
 
 MathExpr: i64 = {
@@ -26,7 +27,18 @@ Factor: i64 = {
 
 Integer: i64 = {
      <n:Num> => n,
-     "-" <n:Num> => -n, // Unary minus at the Integer level
+     // Unary minus at the Integer level(Precedence of fixed strings exists)
+     // LALRPOP prefers to find the longest match first. 
+     // After that, if there are two matches of equal length, it prefers the fixed string
+     "-" <n:Num> => {
+        // Number is 32 bit sign magnitude int, except when used as locktime.
+        // To determine whether locktime or not is beyond context-free grammar.
+        // Can be addressed when context analysis done
+        if n > i32::MAX as i64 {
+            panic!("overflow")
+        }
+        -n
+     },
 }
 
 Num: i64 = <s:r"[0-9]+"> => {
@@ -41,13 +53,40 @@ Num: i64 = <s:r"[0-9]+"> => {
     }
 };
 
-Var: String = <r"[a-z]"> => <>.chars().next().unwrap().into();
+Var: String = <v:r"[a-zA-Z_][a-zA-Z0-9_]*"> => v.into();
 
-Lit: String = <l:r#""[a-z ]*""#> => l[1..l.len()-1].into();
+Lit: String = <l:r#""(\\\\|\\"|[^"\\])*""#> => l[1..l.len()-1].into();
+
+
+SymbolTable: String = {
+    "if" => "if".to_string(),
+    "else" => "else".to_string(),
+    "true" => "true".to_string(),
+    "false" => "false".to_string(),
+    "for" => "for".to_string(),
+    "in" => "in".to_string(),
+    "let" => "let".to_string(),
+    "const" => "const".to_string(),
+    "static" => "static".to_string(),
+    "throw" => "throw".to_string(),
+    "function" => "function".to_string(),
+    "this" => "this".to_string(),
+}
 /*
-pub Comm: () = <> => match <> {
+Comm: () = match {
     r"\s*" => { }, // The default whitespace skipping is disabled if an `ignore pattern` is specified
     r"//[^\n\r]*[\n\r]*" => { }, // Skip `// comments`
     r"/\*[^*]*\*+(?:[^/*][^*]*\*+)*/" => { },  // Skip `/* comments */`
+}
+*/
+// When there's Ambiguities between regular expressions,
+// Use a match declaration, which lets you control the precedence between regular expressions.
+// A match declaration lets you explicitly give the precedence between terminals
+/*
+match {
+    r"[0-9]+"
+} else {
+    r"\w+",
+    _
 }
 */
