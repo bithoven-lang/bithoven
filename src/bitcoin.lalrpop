@@ -2,23 +2,18 @@ use std::str::FromStr;
 
 grammar;
 
-pub Comment: () = { 
-    r"\s*" => { }, // The default whitespace skipping is disabled if an `ignore pattern` is specified
-    r"//[^\n\r]*[\n\r]*" => { }, // Skip `// comments`
-    r"/\*[^*]*\*+(?:[^/*][^*]*\*+)*/" => { },  // Skip `/* comments */`
-}
-/*
-pub Script: Vec<Statement> = {
+pub Script: Vec<String> = {
     <stmts:Statement*> => stmts
 }
-*/
+
 pub Statement: String = {
     <d:VarDeclarationStatement> => "(".to_owned() + &d.0 + ", " + &d.1 + ")",
     <s:SymbolTable> => s,
-    <e:Expr> => e,
+    <e:ExprStatement> => e,
 }
 
-VarDeclarationStatement: (String, String) = "let" <Identifier> "=" <Expr> => (<>).into();
+VarDeclarationStatement: (String, String) = "let" <Identifier> "=" <Expr> ";" => (<>).into();
+ExprStatement: String = <Expr> ";" => (<>).into();
 
 pub Expr: String = {
     <l:Literal> => l,
@@ -90,6 +85,12 @@ SymbolTable: String = {
     "throw" => "throw".to_string(),
     "function" => "function".to_string(),
     "this" => "this".to_string(),
+}
+
+pub Comment: () = { 
+    r"\s*" => { }, // The default whitespace skipping is disabled if an `ignore pattern` is specified
+    r"//[^\n\r]*[\n\r]*" => { }, // Skip `// comments`
+    r"/\*[^*]*\*+(?:[^/*][^*]*\*+)*/" => { },  // Skip `/* comments */`
 }
 
 // When there's Ambiguities between regular expressions,

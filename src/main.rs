@@ -29,7 +29,7 @@ fn main() {
         "{:?}",
         bitcoin::StatementParser::new()
             .parse(
-                r#"let _private_z_123 = " 안여누아ㅓㅁ 231#@$@!  /₩12 ㅓ2'''ㅣ;ㅣ x y z123AS S""#
+                r#"let _private_z_123 = " 안여누아ㅓㅁ 231#@$@!  /₩12 ㅓ2'''ㅣ;ㅣ x y z123AS S";"#
             )
             .unwrap()
     );
@@ -41,7 +41,7 @@ fn main() {
                 r#"
                 let _private_z_123 
                     =
-                          " 안여누아ㅓㅁ 231#@$@!  /₩12 ㅓ2'''ㅣ;ㅣ x y z123AS S"
+                          " 안여누아ㅓㅁ 231#@$@!  /₩12 ㅓ2'''ㅣ;ㅣ x y z123AS S";
                 "#
             )
             .unwrap()
@@ -53,7 +53,7 @@ fn main() {
             .parse(
                 "
                 let _private_z_123 
-                    = 123 - 123 +23-(-23) +1
+                    = 123 - 123 +23-(-23) +1;
                     "
             )
             .unwrap()
@@ -65,8 +65,20 @@ fn main() {
             .parse(
                 "
                 let _private_z_123 
-                     = false
+                     = false;
                     "
+            )
+            .unwrap()
+    );
+    // program can parse any
+    println!(
+        "{:?}",
+        bitcoin::ScriptParser::new()
+            .parse(
+                "
+                let num = -1+2-(4+7)+(7-4);
+                let _private_z_123 = false;
+                "
             )
             .unwrap()
     );
