@@ -77,6 +77,8 @@ fn main() {
         bitcoin::ScriptParser::new()
             .parse(
                 r#"
+                older 213;
+                after 2131231;
                 let num = -1+2-(4+7)+(7-4);
                 let _private_z_123 = false;
                 verify "03_public_key";

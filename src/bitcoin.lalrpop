@@ -13,6 +13,8 @@ pub Statement: String = {
     <b:BlockStatement> => format!("(block, {})", <>),
     <v:VerifyStatement> => format!("(verify, {})", <>),
     <p:PushDataStatement> => format!("(push, {})", <>),
+    <a:AfterStatement> => format!("(after, {})", <>),
+    <o:OlderStatement> => format!("(older, {})", <>),
 }
 
 // No epsilon for Initalizer, don't neet to have Initializer rule
@@ -28,6 +30,10 @@ BlockStatement: String = "{" <s:Script> "}" => format!("[{}]", &s.join(", "));
 VerifyStatement: String = "verify" <StringLiteral> ";" => (<>).into();
 // Bitcoin specific language sytax. push data to stack. can be replaced [].push() later
 PushDataStatement: String = "push" <StringLiteral> ";" => (<>).into();
+// Bitcoin specific language sytax. OP_CLTV. inspired by miniscript syntax.
+AfterStatement: String = "after" <UnsignedInteger> ";" => (<>).to_string();
+// Bitcoin specific language sytax. OP_CSV. inspired by miniscript syntax.
+OlderStatement: String = "older" <UnsignedInteger> ";" => (<>).to_string();
 
 
 pub Expr: String = {
@@ -82,11 +88,11 @@ MathFactor: i64 = {
 };
 
 MathPrimary: i64 = {
-    <i:Integer> => i,
+    <i:UnsignedInteger> => i,
     "(" <e:MathExpr> ")" => e,
 };
 
-Integer: i64 = <s:r"[0-9]+"> => {
+UnsignedInteger: i64 = <s:r"[0-9]+"> => {
     let integer = i64::from_str(s).unwrap();
     // Number is 32 bit sign magnitude int, except when used as locktime.
     // To determine whether locktime or not is beyond context-free grammar.
