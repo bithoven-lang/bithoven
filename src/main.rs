@@ -163,11 +163,11 @@ fn main() {
                 let pubkey_bob = "0245a6b3f8eeab8e88501a9a25391318dce9bf35e24c377ee82799543606bf5212";
                 let secret = "secretRandomHex";
                 
-                if stack![1] == true {
+                if "stack![1]" == true {
                     older 2576085;
                     verify "pubkey_alice";
                 } else {
-                    if sha256 "secret" != sha256 stack![0] {
+                    if sha256 "secret" != sha256 "stack![0]" {
                         panic!();
                     }
                     verify "pubkey_bob";   
@@ -179,4 +179,28 @@ fn main() {
     for node in ast {
         println!("{:?}", node);
     }
+
+    // UTXO: stack + scripts - bitcoin HTLC
+    let tuple = bitcoin::UTXOParser::new()
+        .parse(
+            r#"
+                UTXO 
+                (first, second)
+                let pubkey_alice = "0245a6b3f8eeab8e88501a9a25391318dce9bf35e24c377ee82799543606bf5212";
+                let pubkey_bob = "0245a6b3f8eeab8e88501a9a25391318dce9bf35e24c377ee82799543606bf5212";
+                let secret = "secretRandomHex";
+                
+                if "first" == true {
+                    older 2576085;
+                    verify "pubkey_alice";
+                } else {
+                    if sha256 "secret" != sha256 "second" {
+                        panic!();
+                    }
+                    verify "pubkey_bob";   
+                }
+                "#,
+        )
+        .unwrap();
+    println!("{:?}", tuple);
 }

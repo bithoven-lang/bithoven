@@ -2,9 +2,25 @@ use std::str::FromStr;
 
 grammar;
 
-pub Script: Vec<String> = {
-    <stmts:Statement*> => stmts
+pub UTXO: (Vec<String>, Vec<String>) = {
+    "UTXO" "(" <stack:StackParamList> ")" <script: Script> => (stack, script),
 }
+
+pub Script: Vec<String> = {
+    <statement:Statement*> => statement,
+}
+
+// Bitcoin script sig(witness) stack
+pub StackParamList: Vec<String> = {
+    <first:StackParam> <more:MoreStackParams*> => {
+        let mut stack = more;
+        stack.insert(0, first);
+        stack
+    },
+    => vec![], // epsilon production
+};
+pub StackParam: String = <i:Identifier> => i;
+pub MoreStackParams: String = "," <s:StackParam> => s;
 
 pub Statement: String = {
     <d:VarDeclarationStatement> => format!("(let, ({}, {}))", d.0, d.1),
@@ -39,9 +55,9 @@ AfterExpr: String = "after" <UnsignedInteger> => format!("(after, {})", <>);
 // Bitcoin specific language sytax. OP_CSV. inspired by miniscript syntax.
 OlderExpr: String = "older" <UnsignedInteger> => format!("(older, {})", <>);
 // Bitcoin specific language sytax. OP_SHA256. inspired by miniscript syntax.
-Sha256Expr: String = "sha256" <Literal> => format!("(sha256, {})", <>);
+Sha256Expr: String = "sha256" <StringLiteral> => format!("(sha256, {})", <>);
 // Bitcoin specific language sytax. OP_RIPEMD160. inspired by miniscript syntax.
-Ripemd160Expr: String = "ripemd160" <Literal> => format!("(ripemd160, {})", <>);
+Ripemd160Expr: String = "ripemd160" <StringLiteral> => format!("(ripemd160, {})", <>);
 
 
 pub Expr: String = {
@@ -123,11 +139,7 @@ Literal: String = {
     "true" => "true".to_string(),
     "false" => "false".to_string(),
     <string:StringLiteral> => string,
-    <stack:StackLiteral> => stack,
 }
-
-// Bitcoin script sig(witness) stack
-StackLiteral: String = "stack" "!" "[" <UnsignedInteger> "]" => format!("(stack, {})", <>);
 
 StringLiteral: String = <l:r#""(\\\\|\\"|[^"\\])*""#> => l[1..l.len()-1].into();
 
