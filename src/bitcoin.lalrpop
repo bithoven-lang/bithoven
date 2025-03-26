@@ -44,7 +44,7 @@ IfStatement: String = {
 };
 BlockStatement: String = "{" <s:Script> "}" => format!("[{}]", &s.join(", "));
 // Bitcoin specific language sytax. push data to stack. can be replaced [].push() later
-PushDataStatement: String = "push" <StringLiteral> ";" => (<>).into();
+PushDataStatement: String = "push" <Literal> ";" => (<>).into();
 // Bitcoin specific language sytax. push data to stack. can be replaced [].push() later
 PanicStatement: String = "panic!();" => format!("{}", <>);
 
@@ -144,9 +144,9 @@ Negation: String         = "~"  => "~".to_string();
 Comma: String = "," => ",".to_string();
 SemiColon: String = ";" => ";".to_string();
 OpenParen: String = "(" => "(".to_string();
-CloseParen: String = ")" => "(".to_string();
-OpenBrace: String = "{" => "(".to_string();
-CloseBrace: String = "{" => "(".to_string();
+CloseParen: String = ")" => ")".to_string();
+OpenBrace: String = "{" => "{".to_string();
+CloseBrace: String = "}" => "}".to_string();
 OpenBracket: String = "[" => "[".to_string();
 CloseBracket: String = "]" => "]".to_string();
 
