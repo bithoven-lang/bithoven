@@ -33,7 +33,7 @@ pub StackParam: StackParam = {
             value: None,
         }
     },
-    <i:Identifier> <c:Colon> <t:Type> <a:Assign> <l:Literal> => {
+    <i:Identifier> <c:Colon> <t:Type> <a:Assign> <l:LiteralExpression> => {
         StackParam {
             identifier: i,
             ty: t,
@@ -52,14 +52,14 @@ pub Statement: Statement = {
 // reference1: https://bitcoin.stackexchange.com/questions/103844/inner-working-of-op-if-and-op-else
 // reference2: https://bitcoin.stackexchange.com/questions/90868/does-bitcoin-script-support-nested-ifs-op-if-or-op-notif-inside-one-another
 IfStatement: Statement = {
-    "if" <c:ConditionExpr> <b:BlockStatement> => {
+    "if" <c:Expression0> <b:BlockStatement> => {
         Statement::IfStatement {
             condition_expr: c,
             if_block: b,
             else_block: None,
         }
     },
-    "if" <c:ConditionExpr> <b1:BlockStatement> "else" <b2:BlockStatement> => {
+    "if" <c:Expression0> <b1:BlockStatement> "else" <b2:BlockStatement> => {
         Statement::IfStatement {
             condition_expr: c,
             if_block: b1,
@@ -86,12 +86,17 @@ OlderStatement: BitcoinStatement = "older" <u:UnsignedInteger> <s:SemiColon> => 
     BitcoinStatement::OlderStatement(u as u32)
 };
 // Bitcoin specific language sytax. verify signature against public key
-VerifyStatement: BitcoinStatement = "verify" <e:Expr> <s:SemiColon> => {
+VerifyStatement: BitcoinStatement = "verify" <e:Expression0> <s:SemiColon> => {
     BitcoinStatement::VerifyStatement(e)
 };
 
+pub Expression0: Expression = {
+    <ConditionExpr> => Expression::ConditionExpression(<>),
+    <Expression1>,
+};
 
-pub Expr: Expression = {
+
+pub Expression1: Expression = {
     <Identifier> => Expression::Variable(<>),
     <BooleanLiteral> => Expression::BooleanLiteral(<>),
     <StringLiteral> => Expression::StringLiteral(<>),
@@ -99,10 +104,10 @@ pub Expr: Expression = {
     <BitcoinExpression>,
 };
 
-Literal: Literal = {
-    <BooleanLiteral> => Literal::BooleanLiteral(<>),
-    <StringLiteral> => Literal::StringLiteral(<>),
-    <NumberLiteral> => Literal::NumberLiteral(<>),
+LiteralExpression: LiteralExpression = {
+    <BooleanLiteral> => LiteralExpression::BooleanLiteral(<>),
+    <StringLiteral> => LiteralExpression::StringLiteral(<>),
+    <NumberLiteral> => LiteralExpression::NumberLiteral(<>),
 }
 
 // Support both OP_IF and OP_NOTIF
@@ -131,17 +136,17 @@ ConditionExpr: ConditionExpression = {
 // By separating CmpExpr, you can ensure that boolean operators (&&, ||) only operate on boolean values, 
 // and arithmetic operators (+, -, *, /) only operate on numeric values.
 CompareExpr: CompareExpression = {
-    <l:Expr> <c:BinaryCompareOp> <r:Expr> => {
+    <l:Expression1> <c:BinaryCompareOp> <r:Expression1> => {
         CompareExpression {
-            lhs: l,
+            lhs: Box::new(l),
             op: c,
-            rhs: r,
+            rhs: Box::new(r),
         }
     }
 }
 
 MathExpr: Expression = {
-    <l:Expr> <c:BinaryMathOp> <r:Expr> => {
+    <l:Expression1> <c:BinaryMathOp> <r:Expression1> => {
         Expression::MathExpression {
             lhs: Box::new(l),
             op: c,

@@ -8,7 +8,7 @@ pub struct UTXO {
 pub struct StackParam {
     pub identifier: Identifier,
     pub ty: Type,
-    pub value: Option<Literal>,
+    pub value: Option<LiteralExpression>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -20,17 +20,10 @@ pub enum Type {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Literal {
-    NumberLiteral(i64),
-    BooleanLiteral(bool),
-    StringLiteral(String),
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
     ExprStatement(Expression),
     IfStatement {
-        condition_expr: ConditionExpression,
+        condition_expr: Expression,
         if_block: Vec<Statement>,
         else_block: Option<Vec<Statement>>,
     },
@@ -54,12 +47,20 @@ pub enum Expression {
     NumberLiteral(i64),
     BooleanLiteral(bool),
     StringLiteral(String),
+    ConditionExpression(ConditionExpression),
     MathExpression {
         lhs: Box<Expression>,
         op: BinaryMathOp,
         rhs: Box<Expression>,
     },
     BitcoinExpression(BitcoinExpression),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum LiteralExpression {
+    NumberLiteral(i64),
+    BooleanLiteral(bool),
+    StringLiteral(String),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -83,9 +84,9 @@ pub struct ConditionExpression {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CompareExpression {
-    pub lhs: Expression,
+    pub lhs: Box<Expression>,
     pub op: BinaryCompareOp,
-    pub rhs: Expression,
+    pub rhs: Box<Expression>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
