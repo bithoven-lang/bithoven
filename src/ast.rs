@@ -1,3 +1,9 @@
+#[derive(Debug, PartialEq)]
+pub struct UTXO {
+    pub input_stack: Vec<StackParam>,
+    pub output_script: Vec<Statement>,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct StackParam {
     pub identifier: String,
@@ -25,7 +31,6 @@ pub enum Statement {
         else_block: Option<Vec<Statement>>,
     },
     BlockStatement(Vec<Statement>),
-    PushDataStatement(String),
 }
 
 #[derive(Clone, Debug, PartialEq)]

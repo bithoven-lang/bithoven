@@ -101,7 +101,6 @@ fn main() {
                         }
                     } else {
                         verify "03_public_key";
-                        push "nft";
                     } 
                 
                 "#
@@ -120,13 +119,11 @@ fn main() {
                 if verify "03_public_key" == true {
                     let digest = sha256 "abc";
                     if sha256 "abc" == "digest" {
-                        push "data yeah go";
                     }
                 }
 
                 if older 213 == true {
                     if after 2131231 == true {
-                        push "data data";
                     }
                 }
                 "#
@@ -185,7 +182,7 @@ fn main() {
     }
 
     // UTXO: stack + scripts - bitcoin HTLC
-    let mut tuple: (Vec<StackParam>, Vec<Statement>) = bitcoin::UTXOParser::new()
+    let mut utxo: UTXO = bitcoin::UTXOParser::new()
         .parse(
             r#"
                 UTXO 
@@ -205,8 +202,8 @@ fn main() {
                 "#,
         )
         .unwrap();
-    println!("stack: {:?}", tuple.0);
-    println!("ast: {:?}", tuple.1);
+    println!("stack: {:?}", utxo.input_stack);
+    println!("ast: {:?}", utxo.output_script);
 }
 
 fn symbol_table(ast: Vec<Statement>) -> HashMap<String, String> {

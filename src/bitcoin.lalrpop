@@ -3,8 +3,13 @@ use super::ast::*;
 
 grammar;
 
-pub UTXO: (Vec<StackParam>, Vec<Statement>) = {
-    "UTXO" "(" <stack:StackParamList> ")" <script: Script> => (stack, script),
+pub UTXO: UTXO = {
+    "UTXO" "(" <stack:StackParamList> ")" <script: Script> => {
+        UTXO {
+            input_stack: stack,
+            output_script: script,
+        }
+    }
 }
 
 pub Script: Vec<Statement> = {
@@ -32,7 +37,6 @@ pub Statement: Statement = {
     <d:VarDeclarationStatement> => <>,
     <e:ExprStatement> => Statement::ExprStatement(e),
     <i:IfStatement> => <>,
-    <p:PushDataStatement> => Statement::PushDataStatement(format!("(push, {})", <>)),
 }
 
 // No epsilon for Initalizer, don't neet to have Initializer rule
@@ -64,9 +68,10 @@ IfStatement: Statement = {
     },
 };
 BlockStatement: Vec<Statement> = "{" <s:Script> "}" => s;
+/*
 // Bitcoin specific language sytax. push data to stack. can be replaced [].push() later
 PushDataStatement: String = "push" <Literal> ";" => (<>).into();
-
+*/
 // Bitcoin specific language sytax. verify signature against public key
 VerifyExpr: String = "verify" <StringLiteral> => format!("(verify, {})", <>);
 // Bitcoin specific language sytax. OP_CLTV. inspired by miniscript syntax.
