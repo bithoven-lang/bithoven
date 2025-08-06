@@ -52,7 +52,10 @@ pub enum Expression {
     NumberLiteral(i64),
     BooleanLiteral(bool),
     StringLiteral(String),
-    ConditionExpression(ConditionExpression),
+    ConditionExpression {
+        unary: Option<UnaryMathOp>,
+        compare_expr: CompareExpression,
+    },
     UnaryMathExpression {
         operand: Box<Expression>,
         op: UnaryMathOp,

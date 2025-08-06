@@ -88,7 +88,7 @@ VerifyStatement: BitcoinStatement = "verify" <e:Expression0> <s:SemiColon> => {
 };
 
 pub Expression0: Expression = {
-    <ConditionExpr> => Expression::ConditionExpression(<>),
+    <ConditionExpression>,
     <Expression1>,
 };
 
@@ -113,21 +113,21 @@ LiteralExpression: LiteralExpression = {
 }
 
 // Support both OP_IF and OP_NOTIF
-ConditionExpr: ConditionExpression = {
-    <u:UnaryMathOp> "(" <c:CompareExpr> ")" => {
-        ConditionExpression {
+ConditionExpression: Expression = {
+    <u:UnaryMathOp> "(" <c:CompareExpression> ")" => {
+        Expression::ConditionExpression {
             unary: Some(u),
             compare_expr: c
         }
     },
-    "(" <c:CompareExpr> ")" => {
-        ConditionExpression {
+    "(" <c:CompareExpression> ")" => {
+        Expression::ConditionExpression {
             unary: None,
             compare_expr: c
         }
     }, // to support js like syntax(while redundant)
-    <c:CompareExpr> => {
-        ConditionExpression {
+    <c:CompareExpression> => {
+        Expression::ConditionExpression {
             unary: None,
             compare_expr: c
         }
@@ -137,7 +137,7 @@ ConditionExpr: ConditionExpression = {
 
 // By separating CmpExpr, you can ensure that boolean operators (&&, ||) only operate on boolean values, 
 // and arithmetic operators (+, -, *, /) only operate on numeric values.
-CompareExpr: CompareExpression = {
+CompareExpression: CompareExpression = {
     <l:Expression1> <c:BinaryCompareOp> <r:Expression1> => {
         CompareExpression {
             lhs: Box::new(l),
