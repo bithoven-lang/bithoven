@@ -165,6 +165,12 @@ CryptoExpression: Expression = {
             op: op,
             operand: Box::new(operand),
         }
+    },
+    <op:CryptoOp> <operand:MultiSigExpression> => {
+        Expression::CryptoExpression {
+            op: op,
+            operand: Box::new(operand),
+        }
     }
 }
 
@@ -286,6 +292,18 @@ UnsignedInteger: i64 = <s:r"[0-9]+"> => {
         integer
     }
 };
+
+// For multi-sig
+MultiSigExpression: Expression = {
+    <o: OpenBracket> <m:UnsignedInteger> <n:StringLiteralComma*> <c: CloseBracket> => {
+        Expression::MultiSigExpression{
+            m: m,
+            n: n,
+        }
+    }
+};
+
+pub StringLiteralComma: String = <c:Comma> <s:StringLiteral> => s;
 
 pub Comment: () = { 
     r"\s*" => { }, // The default whitespace skipping is disabled if an `ignore pattern` is specified

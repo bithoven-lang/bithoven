@@ -56,6 +56,10 @@ pub enum Expression {
     NumberLiteral(i64),
     BooleanLiteral(bool),
     StringLiteral(String),
+    MultiSigExpression {
+        m: i64,
+        n: Vec<String>,
+    },
     CompareExpression {
         lhs: Box<Expression>,
         op: BinaryCompareOp,
@@ -85,6 +89,12 @@ pub enum LiteralExpression {
     NumberLiteral(i64),
     BooleanLiteral(bool),
     StringLiteral(String),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct MultiSigExpression {
+    pub m: i64,
+    pub n: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -241,11 +241,14 @@ pub fn push_math_ternary() {}
 
 // OP_RIPEMD160, OP_SHA1, OP_SHA256, OP_HASH160, OP_HASH256,
 // OP_CHECKSIG, OP_CHECKMULTISIG, OP_CHECKSIGADD
-pub fn push_crypto(script: &mut Vec<u8>, op: CryptoOp) {
+pub fn push_crypto(script: &mut Vec<u8>, op: CryptoOp, is_multi: bool) {
     match op {
         CryptoOp::CheckSig => {
-            let builder =
-                bitcoin::script::Builder::new().push_opcode(bitcoin::opcodes::all::OP_CHECKSIG);
+            let builder = bitcoin::script::Builder::new().push_opcode(if is_multi {
+                bitcoin::opcodes::all::OP_CHECKMULTISIG
+            } else {
+                bitcoin::opcodes::all::OP_CHECKSIG
+            });
 
             script.extend_from_slice(builder.as_bytes());
         }
@@ -362,6 +365,7 @@ pub fn compile_statement(bitcoin_script: &mut Vec<u8>, stmt: Statement) {
 pub fn compile_expression(bitcoin_script: &mut Vec<u8>, expr: Expression) {
     match expr {
         Expression::CryptoExpression { operand, op } => {
+            let mut is_multi = false;
             match *operand {
                 Expression::StringLiteral(_) => {
                     compile_expression(bitcoin_script, *operand);
@@ -371,6 +375,13 @@ pub fn compile_expression(bitcoin_script: &mut Vec<u8>, expr: Expression) {
                 }
                 Expression::Variable(_) => {
                     compile_expression(bitcoin_script, *operand);
+                }
+                Expression::MultiSigExpression { m: _, n: _ } => {
+                    if op != CryptoOp::CheckSig {
+                        panic!("Vector is only allowed for multi sig");
+                    }
+                    compile_expression(bitcoin_script, *operand);
+                    is_multi = true;
                 }
                 Expression::BinaryMathExpression {
                     lhs: _,
@@ -392,7 +403,18 @@ pub fn compile_expression(bitcoin_script: &mut Vec<u8>, expr: Expression) {
                     panic!("Wrong operand for crypto operation.")
                 }
             }
-            push_crypto(bitcoin_script, op);
+            push_crypto(bitcoin_script, op, is_multi);
+        }
+        Expression::MultiSigExpression { m, n } => {
+            let num = n.len() as i64;
+            // push m
+            push_int(bitcoin_script, m);
+            // push pubkey
+            for data in n {
+                push_bytes(bitcoin_script, data);
+            }
+            // push n
+            push_int(bitcoin_script, num);
         }
         Expression::StringLiteral(data) => {
             push_bytes(bitcoin_script, data);
