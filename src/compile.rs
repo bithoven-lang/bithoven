@@ -1,7 +1,7 @@
 use bitcoin::opcodes::all::{
     OP_CHECKMULTISIG, OP_CHECKMULTISIGVERIFY, OP_CHECKSIG, OP_CHECKSIGVERIFY, OP_EQUAL,
-    OP_EQUALVERIFY, OP_HASH160, OP_HASH256, OP_NUMEQUAL, OP_NUMEQUALVERIFY, OP_RIPEMD160,
-    OP_SHA256, OP_VERIFY,
+    OP_EQUALVERIFY, OP_HASH160, OP_HASH256, OP_NUMEQUAL, OP_NUMEQUALVERIFY, OP_PUSHDATA1,
+    OP_PUSHDATA2, OP_PUSHDATA4, OP_RIPEMD160, OP_SHA256, OP_VERIFY,
 };
 
 use crate::ast::*;
@@ -520,7 +520,6 @@ pub fn compile_expression(bitcoin_script: &mut Vec<u8>, expr: Expression, target
 }
 
 // From compiled opcodes, optimize opcodes.
-// To do. skip OP_PUSHBYTES
 // e.g. OP_EQUAL + OP_VERIFY => OP_EQUALVERIFY
 pub fn opcode_optimizer(bitcoin_script: Vec<u8>) -> Vec<u8> {
     let mut optimized_script: Vec<u8> = vec![];
@@ -534,8 +533,41 @@ pub fn opcode_optimizer(bitcoin_script: Vec<u8>) -> Vec<u8> {
             optimized_script.push(op);
             break;
         }
-        // else try optimizing
+
+        // Skip OP_PUSHBYTES_N
+        if op <= 0x4b {
+            optimized_script.extend_from_slice(&bitcoin_script[i..=i + op as usize]);
+            i += (op + 1) as usize;
+            continue;
+        }
+
         match bitcoin::Opcode::from(op) {
+            // Skip OP_PUSHDATAN
+            OP_PUSHDATA1 => {
+                let num_to_read = bitcoin::script::read_scriptint(&[bitcoin_script[i + 1]])
+                    .expect("Script number is wrongly encoded.");
+                optimized_script
+                    .extend_from_slice(&bitcoin_script[i..=i + (num_to_read + 1) as usize]);
+                i += (num_to_read + 1 + 1) as usize;
+                continue;
+            }
+            OP_PUSHDATA2 => {
+                let num_to_read = bitcoin::script::read_scriptint(&bitcoin_script[i + 1..=i + 2])
+                    .expect("Script number is wrongly encoded.");
+                optimized_script
+                    .extend_from_slice(&bitcoin_script[i..=i + (num_to_read + 2) as usize]);
+                i += (num_to_read + 1 + 2) as usize;
+                continue;
+            }
+            OP_PUSHDATA4 => {
+                let num_to_read = bitcoin::script::read_scriptint(&bitcoin_script[i + 1..=i + 4])
+                    .expect("Script number is wrongly encoded.");
+                optimized_script
+                    .extend_from_slice(&bitcoin_script[i..=i + (num_to_read + 4) as usize]);
+                i += (num_to_read + 1 + 4) as usize;
+                continue;
+            }
+            // else try optimizing
             OP_EQUAL => {
                 let next = bitcoin::Opcode::from(bitcoin_script[i + 1]);
                 if next == OP_VERIFY {
