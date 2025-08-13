@@ -6,7 +6,7 @@ grammar;
 pub Bithoven: Bithoven = {
     "pragma" <language: Language> "version" <version: Version> <sc1: SemiColon>
     "pragma" <language2: Language> "target" <target: Target> <sc2: SemiColon>
-    "(" <stack:StackParamList> ")" "{" <script: Script> "}" => {
+    <stack: MutlipleStack> "{" <script: Script> "}" => {
         Bithoven {
             pragma: Pragma {
                 language, version, target
@@ -35,6 +35,15 @@ pub Target: Target = {
 
 pub Script: Vec<Statement> = {
     <statement:Statement*> => statement,
+}
+
+pub MutlipleStack: Vec<Vec<StackParam>> = {
+    <stack:Stack*> => stack,
+}
+
+
+pub Stack: Vec<StackParam> = {
+    <o: OpenParen> <stack:StackParamList> <c: CloseParen> => stack,
 }
 
 // Bitcoin script sig(witness) stack
