@@ -1,8 +1,0 @@
-pragma bithoven version 0.0.1;
-pragma bithoven target segwit;
-
-(sig: signature, pubkey: string)
-{
-    verify ripemd160 sha256 pubkey == "8e286e7daaf856ef7e0bf36bd1c0aabb498f2500";
-    checksig pubkey;
-}
