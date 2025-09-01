@@ -5,7 +5,6 @@ use bitcoin::opcodes::all::{
 };
 
 use crate::ast::*;
-use std::collections::HashMap;
 
 /*
     1. Pure Push
@@ -339,19 +338,6 @@ pub fn push_from_alt_stack(script: &mut Vec<u8>) {
         .push_opcode(bitcoin::opcodes::all::OP_SWAP);
 
     script.extend_from_slice(builder.as_bytes());
-}
-
-// From compiled opcodes, add stack ops or re-order opcodes.
-pub fn stack_resolver() {}
-
-pub fn stack_table(stack: Vec<StackParam>) -> HashMap<String, Type> {
-    let mut stack_table: HashMap<String, Type> = HashMap::new();
-
-    for input in stack {
-        stack_table.insert(input.identifier.0, input.ty);
-    }
-
-    stack_table
 }
 
 pub fn compile(ast: Vec<Statement>, target: &Target) -> Vec<u8> {
