@@ -98,10 +98,12 @@ pub fn analyze_statement(
         match stmt {
             Statement::LocktimeStatement { loc, operand, op } => {}
             Statement::VerifyStatement(loc, expr) => {
-                check_variable(expr, &mut scope_vec[branch].symbol_table)?
+                check_variable(expr, &mut scope_vec[branch].symbol_table)?;
+                check_type(expr, &mut scope_vec[branch].symbol_table)?
             }
             Statement::ExpressionStatement(loc, expr) => {
                 check_variable(expr, &mut scope_vec[branch].symbol_table)?;
+                check_type(expr, &mut scope_vec[branch].symbol_table)?
             }
             Statement::IfStatement {
                 loc,
@@ -260,9 +262,6 @@ pub fn check_variable(
     }
 }
 
-// Check type(e.g. operand of expression)
-pub fn check_type(expression: Expression) {}
-
 // Final Statement must be expression statement
 // Unreachable Code Detection
 // No sequential if/else block
@@ -283,7 +282,7 @@ pub fn check_flow(
             )),
         });
     }
-    //
+    // Check any statement exists after return statment, in same execution path.
     if scope_vec[branch].return_value.is_some() {
         return Err(CompileError {
             loc: statement.to_owned().loc(),
@@ -299,6 +298,209 @@ pub fn check_flow(
             Ok(())
         }
         _ => Ok(()),
+    }
+}
+
+// Check type(e.g. operand of expression).
+// Every arithmetic op takes 32bit integer including boolean.
+// Every bytes op can takes string or signature.
+// "==" and "!=" of CompareExpression branches OP_EQUAL(string) and OP_NUMEQUAL(number) up to type.
+pub fn check_type(
+    expression: &Expression,
+    symbol_table: &mut HashMap<String, Symbol>,
+) -> Result<(), CompileError> {
+    match expression {
+        Expression::CheckSigExpression {
+            loc: _,
+            operand,
+            op: _,
+        } => Ok(()),
+        Expression::LogicalExpression {
+            loc: _,
+            lhs,
+            op,
+            rhs,
+        } => {
+            check_type_numeric(lhs, symbol_table)?;
+            check_type_numeric(rhs, symbol_table)
+        }
+        Expression::CompareExpression { loc, lhs, op, rhs } => {
+            // compare string/signature to string/signature
+            if check_type_string(&lhs, symbol_table).is_ok()
+                && check_type_string(&rhs, symbol_table).is_ok()
+            {
+                if *op != BinaryCompareOp::Equal && *op != BinaryCompareOp::NotEqual {
+                    return Err(CompileError {
+                        loc: loc.to_owned(),
+                        kind: ErrorKind::InvalidOperation(format!(
+                            "Compare opeation for string must be either == or != but: {:?}.",
+                            op
+                        )),
+                    });
+                }
+                return Ok(());
+            }
+            // compare boolean/number to boolean/number
+            if check_type_numeric(&lhs, symbol_table).is_ok()
+                && check_type_numeric(&rhs, symbol_table).is_ok()
+            {
+                return Ok(());
+            }
+
+            Err(CompileError {
+                loc: loc.to_owned(),
+                kind: ErrorKind::InvalidOperation(format!(
+                    "Compare type must be same but: {:?} to {:?}.",
+                    lhs, rhs
+                )),
+            })
+        }
+        Expression::UnaryMathExpression {
+            loc: _,
+            operand,
+            op,
+        } => check_type_numeric(&operand, symbol_table),
+        Expression::BinaryMathExpression {
+            loc: _,
+            lhs,
+            op,
+            rhs,
+        } => {
+            check_type_numeric(&lhs, symbol_table)?;
+            check_type_numeric(&rhs, symbol_table)
+        }
+        // Allow only ascii encoded string.
+        // UTF-8 string's char has various byte size, which makes use of OP_SIZE hard.
+        Expression::ByteExpression {
+            loc: _,
+            operand,
+            op: _,
+        } => {
+            check_type_string(&operand, symbol_table)?;
+            // Further check whether ascii or not.
+            match *operand.to_owned() {
+                Expression::StringLiteral(loc, val) => {
+                    if !(val.is_ascii()) {
+                        return Err(CompileError {
+                            loc: loc,
+                            kind: ErrorKind::InvalidOperation(format!(
+                                "Operand must be ascii string but: {:?}.",
+                                val,
+                            )),
+                        });
+                    }
+                    Ok(())
+                }
+                _ => Ok(()),
+            }
+        }
+        _ => Ok(()),
+    }
+}
+
+pub fn check_type_numeric(
+    expression: &Expression,
+    symbol_table: &mut HashMap<String, Symbol>,
+) -> Result<(), CompileError> {
+    match expression.to_owned() {
+        // Throw error for non-numeric evaluated expression.
+        Expression::UnaryCryptoExpression { loc, .. } => {
+            return Err(CompileError {
+                loc: loc,
+                kind: ErrorKind::InvalidOperation(format!(
+                    "Operand must be number or boolean but: {:?}.",
+                    expression,
+                )),
+            });
+        }
+        Expression::StringLiteral(loc, ..) => {
+            return Err(CompileError {
+                loc: loc,
+                kind: ErrorKind::InvalidOperation(format!(
+                    "Operand must be number or boolean but: {:?}.",
+                    expression,
+                )),
+            });
+        }
+        // For variable, look up symbol table.
+        Expression::Variable(loc, id) => {
+            let id_string = id.0.to_owned();
+            let var_type = symbol_table.get(&id_string).unwrap().ty.to_owned();
+            if var_type == Type::Signature || var_type == Type::String {
+                return Err(CompileError {
+                    loc: loc,
+                    kind: ErrorKind::InvalidOperation(format!(
+                        "Operand must be number or boolean but: {:?}.",
+                        expression,
+                    )),
+                });
+            }
+            Ok(())
+        }
+        // ByteExpression and CheckSigExpression are evaluated to number.
+        // However, it needs to check operand expression.
+        // Call check_type().
+        Expression::ByteExpression { loc, operand, op } => check_type(&expression, symbol_table),
+        Expression::CheckSigExpression { loc, operand, op } => {
+            check_type(&expression, symbol_table)
+        }
+        // Compare expression is evaluated to number.
+        // However, it needs to check type equivalence of two operands.
+        Expression::CompareExpression { loc, lhs, op, rhs } => {
+            check_type(&expression, symbol_table)
+        }
+        // Otherwise, recursive check_type_numeric().
+        Expression::LogicalExpression { loc, lhs, op, rhs } => {
+            check_type_numeric(&lhs, symbol_table)?;
+            check_type_numeric(&rhs, symbol_table)
+        }
+        Expression::BinaryMathExpression { loc, lhs, op, rhs } => {
+            check_type_numeric(&lhs, symbol_table)?;
+            check_type_numeric(&rhs, symbol_table)
+        }
+        Expression::UnaryMathExpression { loc, operand, op } => {
+            check_type_numeric(&operand, symbol_table)
+        }
+        _ => Ok(()),
+    }
+}
+
+pub fn check_type_string(
+    expression: &Expression,
+    symbol_table: &mut HashMap<String, Symbol>,
+) -> Result<(), CompileError> {
+    match expression.to_owned() {
+        // StringLiteral is just string.
+        Expression::StringLiteral(loc, val) => Ok(()),
+        // UnaryCryptoExpression ouputs ascii string.
+        // UnaryCryptoExpression doesn't need to check operand.
+        Expression::UnaryCryptoExpression { .. } => Ok(()),
+        // For variable, look up symbol table.
+        Expression::Variable(loc, id) => {
+            let id_string = id.0.to_owned();
+            let var_type = symbol_table.get(&id_string).unwrap().ty.to_owned();
+            if var_type == Type::Boolean || var_type == Type::Number {
+                return Err(CompileError {
+                    loc: loc,
+                    kind: ErrorKind::InvalidOperation(format!(
+                        "Operand must be string but: {:?}.",
+                        expression,
+                    )),
+                });
+            }
+            Ok(())
+        }
+        // Throw error for non-string evaluated expression.
+        // Remaining expressions are all evaluated to number.
+        _ => {
+            return Err(CompileError {
+                loc: expression.to_owned().loc(),
+                kind: ErrorKind::InvalidOperation(format!(
+                    "Operand must be string but: {:?}.",
+                    expression,
+                )),
+            });
+        }
     }
 }
 

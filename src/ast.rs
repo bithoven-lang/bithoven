@@ -197,7 +197,7 @@ pub enum ErrorKind {
 
     // Type Errors
     TypeMismatch { expected: Type, found: Type },
-    InvalidOperation { op: Expression, on_type: Type },
+    InvalidOperation(String),
 
     // Bitcoin-Specific Errors
     StackDepthExceeded { limit: usize, found: usize },
