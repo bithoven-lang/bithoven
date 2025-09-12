@@ -7,10 +7,10 @@ pragma bithoven target segwit;
     str1: string, sig_bob_or_carol: signature, num2: number, str2: string, num3: number, num4: number)
 {
     verify 2-4 < max (2, (3 + 4));
-    verify ++2 + (sha256 sha256 1 == ((sha256 num1 == sha256 num2) == ripemd160 num3));
+    verify ++2 + (len sha256 sha256 1 == ((sha256 num1 == sha256 num2) == len ripemd160 num3));
     verify 2+ 4 == !(sha256 "scret secrt" != sha256 preimage_not);
     verify (1 > 2) + (3 > 4) + (2 > 3) == 2; 
-    verify sha256(1 + sha256(2)) + 2 + sha256 2; 
+    verify 2 + 2 + 2; 
     older 2576085;
     after 122;
     verify checksig (sig_alice, "0245a6b3f8eeab8e88501a9a25391318dce9bf35e24c377ee82799543606bf5212");
@@ -22,7 +22,7 @@ pragma bithoven target segwit;
     verify 17;
     verify true;
     
-    verify ! abs negate -- ++ sha256 ripemd160 sha256 (2 + ripemd160 sha256 3 + 2);
+    verify ! abs negate -- ++ len sha256 ripemd160 sha256 (2 + ripemd160 sha256 3 + 2);
     verify (3 > 4) + (3 > 4) + (3 > 4) + (3 < 4) >= 2;
     verify 2 - -- -4;
     verify max(-2+3, len "abc");
