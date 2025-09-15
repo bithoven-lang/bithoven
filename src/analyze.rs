@@ -99,11 +99,13 @@ pub fn analyze_statement(
             Statement::LocktimeStatement { loc, operand, op } => {}
             Statement::VerifyStatement(loc, expr) => {
                 check_variable(expr, &mut scope_vec[branch].symbol_table)?;
-                check_type(expr, &mut scope_vec[branch].symbol_table)?
+                check_type(expr, &mut scope_vec[branch].symbol_table)?;
+                check_security(expr)?
             }
             Statement::ExpressionStatement(loc, expr) => {
                 check_variable(expr, &mut scope_vec[branch].symbol_table)?;
-                check_type(expr, &mut scope_vec[branch].symbol_table)?
+                check_type(expr, &mut scope_vec[branch].symbol_table)?;
+                check_security(expr)?
             }
             Statement::IfStatement {
                 loc,
@@ -505,7 +507,30 @@ pub fn check_type_string(
 }
 
 // Any possible vulnerability
-pub fn check_security() {}
+pub fn check_security(expression: &Expression) -> Result<(), CompileError> {
+    check_overflow(expression)
+}
+
+pub fn check_overflow(expression: &Expression) -> Result<(), CompileError> {
+    match expression.to_owned() {
+        // Number is 32 bit sign magnitude int, except when used as locktime.
+        // To determine whether locktime or not is beyond context-free grammar.
+        // Can be addressed when context analysis done
+        Expression::NumberLiteral(loc, val) => {
+            if val > i32::MAX as i64 || val <= i32::MIN as i64 {
+                return Err(CompileError {
+                    loc: loc,
+                    kind: ErrorKind::IntegerOverflow(format!(
+                        "Number is 32 bit sign magnitude int: {:?}.",
+                        val,
+                    )),
+                });
+            }
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
 
 /*
 This layer checks if the compiled script will be valid according to the strict rules of the Bitcoin network. The goal is to catch errors before deployment.

@@ -353,27 +353,11 @@ NumberLiteral: i64 = {
     // Unary minus at the Integer level(Precedence of fixed strings exists)
     // LALRPOP prefers to find the longest match first. 
     // After that, if there are two matches of equal length, it prefers the fixed string
-    "-" <p:UnsignedInteger> => {
-       // Number is 32 bit sign magnitude int, except when used as locktime.
-       // To determine whether locktime or not is beyond context-free grammar.
-       // Can be addressed when context analysis done
-       if p > i32::MAX as i64 {
-           panic!("overflow")
-       }
-       -p
-    }
+    "-" <p:UnsignedInteger> => -p,
 };
 
 UnsignedInteger: i64 = <s:r"[0-9]+"> => {
-    let integer = i64::from_str(s).unwrap();
-    // Number is 32 bit sign magnitude int, except when used as locktime.
-    // To determine whether locktime or not is beyond context-free grammar.
-    // Can be addressed when context analysis done
-    if integer <= i32::MIN as i64 || integer > u32::MAX as i64 {
-        panic!("overflow")
-    } else {
-        integer
-    }
+    i64::from_str(s).unwrap()
 };
 
 pub Comment: () = { 

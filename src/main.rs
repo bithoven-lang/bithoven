@@ -14,6 +14,7 @@ use std::fs;
 use std::path;
 use std::result::Result;
 
+use crate::analyze::*;
 use crate::source::*;
 
 lalrpop_mod!(pub bithoven); // synthesized by LALRPOP
@@ -76,6 +77,13 @@ fn main() {
     let source = read_bithoven(&args.path);
     // UTXO: stack + scripts - bitcoin HTLC
     let utxo: Bithoven = parse(source).unwrap();
+
+    analyze(
+        &utxo.output_script,
+        utxo.input_stack.clone(),
+        &utxo.pragma.target,
+    )
+    .unwrap();
 
     let script = compile(utxo.output_script.clone(), &utxo.pragma.target);
 
