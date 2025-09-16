@@ -11,9 +11,6 @@ pub struct Scope {
 
     /// What kind of scope is this? (Global, a conditional branch, a function, etc.)
     pub branch: usize,
-
-    /// The value of being evaluated(returning) in this scope
-    pub return_value: Option<Statement>,
 }
 
 // Symbol to build symbol table from stack
@@ -73,15 +70,11 @@ pub fn analyze(
         scope_vec.push(Scope {
             symbol_table: build_symbol_table(&stack)?,
             branch: branch,
-            return_value: None,
         });
     }
 
     analyze_statement(ast, &mut scope_vec, target, 0)?;
-
-    for scope in scope_vec {
-        println!("SCOPE: {:?}", scope);
-    }
+    check_flow(ast)?;
 
     Ok(())
 }
@@ -93,8 +86,7 @@ pub fn analyze_statement(
     mut branch: usize,
 ) -> Result<usize, CompileError> {
     // Check statements in global scope of current branch.
-    for (i, stmt) in ast.iter().enumerate() {
-        check_flow(stmt.to_owned(), scope_vec, branch)?;
+    for stmt in ast {
         match stmt {
             Statement::LocktimeStatement { loc, operand, op } => {}
             Statement::VerifyStatement(loc, expr) => {
@@ -113,19 +105,10 @@ pub fn analyze_statement(
                 if_block,
                 else_block,
             } => {
-                // Check No statement after if/else block,
-                // as it can be placed before if/else block.
-                let last = ast.last().unwrap().to_owned();
-                if i != ast.len() - 1 {
-                    return Err(CompileError {
-                        loc: last.to_owned().loc(),
-                        kind: ErrorKind::UnreachableCode(format!(
-                            "No statement after if/else block but: {:?}.",
-                            last
-                        )),
-                    });
-                }
                 check_variable(condition_expr, &mut scope_vec[branch].symbol_table)?;
+                check_type(condition_expr, &mut scope_vec[branch].symbol_table)?;
+                check_security(condition_expr)?;
+
                 branch = analyze_statement(&if_block, scope_vec, target, branch)?;
                 if else_block.is_some() {
                     branch += 1;
@@ -140,6 +123,72 @@ pub fn analyze_statement(
         }
     }
     Ok(branch)
+}
+
+// No sequential if/else block && No statement after if/else block.
+// Unreachable Code Detection(No statement after return statement).
+// Final Statement must be expression statement.
+pub fn check_flow(ast: &Vec<Statement>) -> Result<(), CompileError> {
+    // No sequential if/else block && No statement after if/else block
+    // Check No statement after return statement.
+    for (i, statement) in ast.iter().enumerate() {
+        match statement {
+            Statement::IfStatement { .. } => {
+                // Check No statement after if/else block,
+                // as it can be placed before if/else block.
+                if i != ast.len() - 1 {
+                    let next = ast[i + 1].to_owned();
+                    return Err(CompileError {
+                        loc: next.to_owned().loc(),
+                        kind: ErrorKind::UnreachableCode(format!(
+                            "No statement after if/else block but: {:?}.",
+                            next
+                        )),
+                    });
+                }
+            }
+            Statement::ExpressionStatement(..) => {
+                // Check No statement after return statement.
+                if i != ast.len() - 1 {
+                    let next = ast[i + 1].to_owned();
+                    return Err(CompileError {
+                        loc: next.to_owned().loc(),
+                        kind: ErrorKind::UnreachableCode(format!(
+                            "Unreachable code after return statement: {:?}. Move return statement at the last scope of execution path",
+                            next
+                        )),
+                    });
+                }
+            }
+            _ => (),
+        }
+    }
+    let last = ast.last().unwrap().to_owned();
+    // Final Statement must be expression statement.
+    match last {
+        Statement::IfStatement {
+            if_block,
+            else_block,
+            ..
+        } => {
+            check_flow(&if_block)?;
+            if else_block.is_some() {
+                check_flow(&else_block.unwrap())?;
+            }
+        }
+        Statement::ExpressionStatement(..) => (),
+        _ => {
+            return Err(CompileError {
+                loc: last.to_owned().loc(),
+                kind: ErrorKind::NoReturn(format!(
+                    "Return statement must exist for each possible execution path: {:?}.",
+                    last
+                )),
+            });
+        }
+    }
+
+    Ok(())
 }
 
 // Undefined Variable Check
@@ -260,45 +309,6 @@ pub fn check_variable(
             operand,
             op: _,
         } => check_variable(&operand, symbol_table),
-        _ => Ok(()),
-    }
-}
-
-// Final Statement must be expression statement
-// Unreachable Code Detection
-// No sequential if/else block
-// No statement after if/else block
-// No statement after return statement
-pub fn check_flow(
-    statement: Statement,
-    scope_vec: &mut Vec<Scope>,
-    branch: usize,
-) -> Result<(), CompileError> {
-    // Check return statment exists.
-    if branch != 0 && scope_vec[branch - 1].return_value.is_none() {
-        return Err(CompileError {
-            loc: statement.to_owned().loc(),
-            kind: ErrorKind::NoReturn(format!(
-                "Return statement must exist for each possible execution path: {:?}.",
-                statement
-            )),
-        });
-    }
-    // Check any statement exists after return statment, in same execution path.
-    if scope_vec[branch].return_value.is_some() {
-        return Err(CompileError {
-            loc: statement.to_owned().loc(),
-            kind: ErrorKind::UnreachableCode(format!(
-                "Unreachable code after return statement: {:?}. Move return statement at the last scope of execution path",
-                statement
-            )),
-        });
-    }
-    match statement {
-        Statement::ExpressionStatement(_, _) => {
-            scope_vec[branch].return_value = Some(statement);
-            Ok(())
-        }
         _ => Ok(()),
     }
 }
