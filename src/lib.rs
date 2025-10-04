@@ -7,36 +7,59 @@ use ast::*;
 use compile::*;
 use lalrpop_util::lalrpop_mod;
 
-use clap::Parser;
-use lalrpop_util::ParseError;
-use serde::Serialize;
-use std::fs;
-use std::path;
-use std::result::Result;
+use serde::{Deserialize, Serialize};
+
+use wasm_bindgen::prelude::*;
 
 use crate::analyze::*;
 use crate::source::*;
 
+use lalrpop_util::ParseError;
+
+use std::result::Result;
+
 lalrpop_mod!(pub bithoven); // synthesized by LALRPOP
 
-/// A simple program to demonstrate argument parsing
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
-    /// path to file to compile
-    #[arg(short, long)]
-    path: String,
-}
-
 // Define the data structure you want to write to JSON
-#[derive(Serialize)]
-struct BithovenOutput {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[wasm_bindgen]
+pub struct BithovenOutput {
     asm: String,
     hex: String,
     bytes: Vec<u8>,
 }
 
-fn parse(source: String) -> Result<Bithoven, ()> {
+#[wasm_bindgen]
+impl BithovenOutput {
+    #[wasm_bindgen(constructor)]
+    pub fn new(asm: String, hex: String, bytes: Vec<u8>) -> Self {
+        BithovenOutput { asm, hex, bytes }
+    }
+    #[wasm_bindgen]
+    pub fn to_object(&self) -> JsValue {
+        serde_wasm_bindgen::to_value(&self).unwrap()
+    }
+    #[wasm_bindgen]
+    pub fn from_object(object: JsValue) -> BithovenOutput {
+        serde_wasm_bindgen::from_value(object)
+            .map_err(|e| JsValue::from_str(&format!("Failed to deserialize: {}", e)))
+            .unwrap()
+    }
+    #[wasm_bindgen(getter)]
+    pub fn asm(&self) -> String {
+        self.asm.clone()
+    }
+    #[wasm_bindgen(getter)]
+    pub fn hex(&self) -> String {
+        self.hex.clone()
+    }
+    #[wasm_bindgen(getter)]
+    pub fn bytes(&self) -> Vec<u8> {
+        self.bytes.clone()
+    }
+}
+
+pub fn parse(source: String) -> Result<Bithoven, ()> {
     let line_index = build_line_index(&source);
     match bithoven::BithovenParser::new().parse(&source) {
         Ok(mut utxo) => {
@@ -71,10 +94,8 @@ fn parse(source: String) -> Result<Bithoven, ()> {
     }
 }
 
-fn main() {
-    let args = Args::parse();
-
-    let source = read_bithoven(&args.path);
+#[wasm_bindgen]
+pub fn parse_compile_analyze(source: String) -> BithovenOutput {
     // UTXO: stack + scripts - bitcoin HTLC
     let utxo: Bithoven = parse(source).unwrap();
 
@@ -87,38 +108,9 @@ fn main() {
 
     let script = compile(utxo.output_script.clone(), &utxo.pragma.target);
 
-    // 1. Create an instance of your struct
-    let output: BithovenOutput = BithovenOutput {
-        hex: bitcoin::Script::from_bytes(&script).to_hex_string(),
-        asm: bitcoin::Script::from_bytes(&script).to_asm_string(),
-        bytes: bitcoin::Script::from_bytes(&script).to_bytes(),
-    };
-
-    // 2. Get the file name using path
-    let file_name = path::Path::new(&args.path)
-        .file_name()
-        .expect("Incorrect file name for Bithoven")
-        .to_str()
-        .expect("Incorrect file name for Bithoven")
-        .to_owned();
-
-    // 3. Create a file to write to.
-    let file = fs::File::create(file_name + ".json").unwrap();
-
-    serde_json::to_writer_pretty(file, &output).unwrap();
-
-    println!("PRAGMA: {:?}", utxo.pragma);
-    println!("STACK: {:?}", utxo.input_stack);
-    println!("AST: {:?}", utxo.output_script);
-
-    println!("{:?}", bitcoin::Script::from_bytes(&script).to_asm_string());
-}
-
-fn read_bithoven(file_path: &String) -> String {
-    // Attempt to read the file
-    let bytes = fs::read(file_path).expect("Not Bithoven file.");
-
-    str::from_utf8(&bytes)
-        .expect("Bithoven file should consist of utf8.")
-        .to_string()
+    BithovenOutput::new(
+        bitcoin::Script::from_bytes(&script).to_asm_string(),
+        bitcoin::Script::from_bytes(&script).to_hex_string(),
+        bitcoin::Script::from_bytes(&script).to_bytes(),
+    )
 }
