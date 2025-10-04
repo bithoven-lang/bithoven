@@ -29,15 +29,20 @@ pub struct Symbol {
 }
 
 // To do. need to check multiple stacks and whether the order is accurate(following execution path)
-// Currently, check the duplication, and the existence in the process of parsing expression
+// Check the duplication here.
+// Check whether it has signature or not, which is crucial security property.
 pub fn build_symbol_table(
     stack_vec: &Vec<StackParam>,
 ) -> Result<HashMap<String, Symbol>, CompileError> {
     // Key is identifier
     let mut symbol_table: HashMap<String, Symbol> = HashMap::new();
-
+    let mut has_sig: bool = false;
     for (i, stack_item) in stack_vec.iter().enumerate().rev() {
         let item = stack_item.to_owned();
+
+        if item.ty == Type::Signature {
+            has_sig = true;
+        }
 
         if symbol_table.get(&stack_item.identifier.0).is_some() {
             return Err(CompileError {
@@ -57,7 +62,17 @@ pub fn build_symbol_table(
             },
         );
     }
-    Ok(symbol_table)
+    if has_sig {
+        Ok(symbol_table)
+    } else {
+        Err(CompileError {
+            loc: stack_vec[0].clone().loc,
+            kind: ErrorKind::NoSigRequired(format!(
+                "At least one signature required for stack but: {:?}.",
+                stack_vec,
+            )),
+        })
+    }
 }
 
 pub fn analyze(

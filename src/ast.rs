@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 #[derive(Debug, PartialEq)]
 pub struct Bithoven {
     pub pragma: Pragma,
@@ -26,7 +28,7 @@ pub struct StackParam {
     pub ty: Type,
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct Location {
     pub start: usize,
     pub end: usize,
@@ -181,19 +183,22 @@ pub enum Factor {
     },
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CompileError {
     pub loc: Location,
     pub kind: ErrorKind,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ErrorKind {
+    // Parsing Error
+    ParseError(String),
+
     // Variable and Scope Errors
     DuplicateVariable(String),
     UndefinedVariable(String),
     VariableConsumed(String),
-    InvalidConsumptionOrder { expected: String, found: String },
+    InvalidConsumptionOrder(String),
 
     // Type Errors
     TypeMismatch(String),
@@ -201,13 +206,48 @@ pub enum ErrorKind {
     IntegerOverflow(String),
 
     // Bitcoin-Specific Errors
-    StackDepthExceeded { limit: usize, found: usize },
-    OpcodeCountExceeded { limit: usize, path_name: String },
-    DustOutputCreated { path_name: String },
+    NoSigRequired(String),
+    StackDepthExceeded(String),
+    OpcodeCountExceeded(String),
+    DustOutputCreated(String),
 
     // Flow Errors
     MultipleReturn(String),
     NoReturn(String),
     UnreachableCode(String),
     DeadPath,
+}
+
+use std::fmt;
+use wasm_bindgen::JsValue;
+
+// (Optional but recommended) Create a display implementation for a clean error message.
+impl fmt::Display for CompileError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Error at line {}:{}: {:?}",
+            self.loc.line, self.loc.column, self.kind
+        )
+    }
+}
+
+// The magic happens here! 🧙‍♂️
+impl From<CompileError> for JsValue {
+    fn from(error: CompileError) -> Self {
+        // Create a new JS Error object.
+        // The error message will be the string from our Display impl.
+        let js_error = js_sys::Error::new(&error.to_string());
+
+        // Serialize the structured error data into a JsValue (a JS object).
+        let details = serde_wasm_bindgen::to_value(&error).unwrap_or(JsValue::NULL);
+
+        // Attach the structured details to the JS Error object.
+        // In JS, you'll be able to access this with `error.details`.
+        js_sys::Reflect::set(&js_error, &JsValue::from_str("details"), &details)
+            .unwrap_or_default(); // Or handle the error if setting fails
+
+        // Return the JS Error object as a JsValue.
+        js_error.into()
+    }
 }

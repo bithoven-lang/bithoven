@@ -5,6 +5,15 @@ pub trait Locatable {
     fn loc(self) -> Location;
 }
 
+impl Locatable for StackParam {
+    fn loc_mut(&mut self) -> &mut Location {
+        &mut self.loc
+    }
+    fn loc(self) -> Location {
+        self.loc
+    }
+}
+
 impl Locatable for Statement {
     fn loc_mut(&mut self) -> &mut Location {
         match self {
@@ -97,6 +106,20 @@ pub fn get_line_and_column(line_index: &[usize], byte_offset: usize) -> (usize, 
         .map_or(1, |i| i + 1);
     let column = byte_offset - line_index[line - 1] + 1;
     (line, column)
+}
+
+pub fn set_stack_location(stack_vec: &mut Vec<Vec<StackParam>>, line_index: &[usize]) {
+    for stack in stack_vec {
+        for item in stack {
+            // Get a mutable reference to the location using our new trait method.
+            let loc = item.loc_mut();
+
+            // Perform the update logic once.
+            let (line, column) = get_line_and_column(line_index, loc.start);
+            loc.line = line;
+            loc.column = column;
+        }
+    }
 }
 
 pub fn set_ast_location(ast: &mut Vec<Statement>, line_index: &[usize]) {

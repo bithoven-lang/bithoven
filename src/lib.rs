@@ -16,6 +16,7 @@ use crate::source::*;
 
 use lalrpop_util::ParseError;
 
+use std::fmt::Debug;
 use std::result::Result;
 
 lalrpop_mod!(pub bithoven); // synthesized by LALRPOP
@@ -59,10 +60,11 @@ impl BithovenOutput {
     }
 }
 
-pub fn parse(source: String) -> Result<Bithoven, ()> {
+pub fn parse(source: String) -> Result<Bithoven, CompileError> {
     let line_index = build_line_index(&source);
     match bithoven::BithovenParser::new().parse(&source) {
         Ok(mut utxo) => {
+            set_stack_location(&mut utxo.input_stack, &line_index);
             set_ast_location(&mut utxo.output_script, &line_index);
             Ok(utxo)
         }
@@ -78,39 +80,45 @@ pub fn parse(source: String) -> Result<Bithoven, ()> {
             };
 
             let (line, column) = get_line_and_column(&line_index, location);
-            eprintln!("Syntax Error at line {}, column {}:", line, column);
-            eprintln!(
-                "Invalid Statement: \"{}\"",
-                &source[if line != line_index.len() {
-                    line_index[line - 1]..line_index[line]
-                } else {
-                    line_index[line - 1]..source.len()
-                }]
-                .trim()
-            );
-            eprintln!("{:?}", e);
-            Err(())
+            let invalid_statement = source[if line != line_index.len() {
+                line_index[line - 1]..line_index[line]
+            } else {
+                line_index[line - 1]..source.len()
+            }]
+            .trim();
+
+            Err(CompileError {
+                loc: Location {
+                    start: 0,
+                    end: 0,
+                    line,
+                    column,
+                },
+                kind: ErrorKind::ParseError(format!(
+                    "Invalid Statement: \"{}\"",
+                    invalid_statement
+                )),
+            })
         }
     }
 }
 
 #[wasm_bindgen]
-pub fn parse_compile_analyze(source: String) -> BithovenOutput {
+pub fn parse_compile_analyze(source: String) -> Result<BithovenOutput, JsValue> {
     // UTXO: stack + scripts - bitcoin HTLC
-    let utxo: Bithoven = parse(source).unwrap();
+    let utxo: Bithoven = parse(source)?;
 
     analyze(
         &utxo.output_script,
         utxo.input_stack.clone(),
         &utxo.pragma.target,
-    )
-    .unwrap();
+    )?;
 
     let script = compile(utxo.output_script.clone(), &utxo.pragma.target);
 
-    BithovenOutput::new(
+    Ok(BithovenOutput::new(
         bitcoin::Script::from_bytes(&script).to_asm_string(),
         bitcoin::Script::from_bytes(&script).to_hex_string(),
         bitcoin::Script::from_bytes(&script).to_bytes(),
-    )
+    ))
 }
