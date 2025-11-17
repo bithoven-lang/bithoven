@@ -339,10 +339,6 @@ Type: Type = {
     "signature" => Type::Signature,
 }
 
-pub Identifier: Identifier = <v:r"[a-zA-Z_][a-zA-Z0-9_]*"> => Identifier(v.to_string());
-
-pub StringLiteral: String = <l:r#""(\\\\|\\"|[^"\\])*""#> => l[1..l.len()-1].into();
-
 pub BooleanLiteral: bool = {
     "true" => true,
     "false" => false,
@@ -356,14 +352,94 @@ pub NumberLiteral: i64 = {
     "-" <p:UnsignedInteger> => -p,
 };
 
-pub UnsignedInteger: i64 = <s:r"[0-9]+"> => {
+pub Identifier: Identifier = <v:"IDENTIFIER"> => Identifier(v.to_string());
+pub StringLiteral: String = <l:"STRING_LITERAL"> => l[1..l.len()-1].into();
+pub UnsignedInteger: i64 = <s:"UNSIGNED_INTEGER"> => {
     i64::from_str(s).unwrap()
 };
 
-pub Comment: () = { 
-    r"\s*" => { }, // The default whitespace skipping is disabled if an `ignore pattern` is specified
-    r"//[^\n\r]*[\n\r]*" => { }, // Skip `// comments`
-    r"/\*[^*]*\*+(?:[^/*][^*]*\*+)*/" => { },  // Skip `/* comments */`
+// --- LEXER DEFINITION (MATCH BLOCK) ---
+// This block controls the lexer, including comments.
+
+match {
+    // 1. IGNORE PATTERNS:
+    // These are skipped by the parser.
+    r"\s*" => { },
+    r"//[^\n\r]*[\n\r]*" => { },
+    r"/\*[^*]*\*+(?:[^/*][^*]*\*+)*/" => { },
+
+} else {
+    // 2. TOKEN DEFINITIONS:
+    // These regexes are converted into the terminals
+    // that your `pub` rules above now reference.
+    
+    // "STRING_LITERAL"
+    r#""(\\\\|\\"|[^"\\])*""# => "STRING_LITERAL",
+    
+    // "UNSIGNED_INTEGER"
+    r"[0-9]+" => "UNSIGNED_INTEGER",
+
+    // --- KEYWORDS ---
+    // We must list all keywords that look like identifiers *before*
+    // the main "IDENTIFIER" rule. This gives them priority.
+    "pragma" => "pragma",
+    "version" => "version",
+    "target" => "target",
+    "bithoven" => "bithoven",
+    "legacy" => "legacy",
+    "segwit" => "segwit",
+    "taproot" => "taproot",
+    "if" => "if",
+    "else" => "else",
+    "return" => "return",
+    "verify" => "verify",
+    "older" => "older",
+    "after" => "after",
+    "negate" => "negate",
+    "abs" => "abs",
+    "max" => "max",
+    "min" => "min",
+    "checksig" => "checksig",
+    "sha256" => "sha256",
+    "ripemd160" => "ripemd160",
+    "len" => "len",
+    "bool" => "bool",
+    "string" => "string",
+    "number" => "number",
+    "signature" => "signature",
+    "true" => "true",
+    "false" => "false",
+
+    // --- PUNCTUATION ---
+    // All other string literals must also be defined here.
+    "=" => "=",
+    "." => ".",
+    "," => ",",
+    ":" => ":",
+    ";" => ";",
+    "(" => "(",
+    ")" => ")",
+    "{" => "{",
+    "}" => "}",
+    "[" => "[",
+    "]" => "]",
+    "++" => "++",
+    "--" => "--",
+    "!" => "!",
+    "+" => "+",
+    "-" => "-",
+    "||" => "||",
+    "&&" => "&&",
+    "==" => "==",
+    "!=" => "!=",
+    ">"  => ">",
+    ">=" => ">=",
+    "<"  => "<",
+    "<=" => "<=",
+    
+    // "IDENTIFIER"
+    // This MUST come last, after all keywords.
+    r"[a-zA-Z_][a-zA-Z0-9_]*" => "IDENTIFIER",
 }
 
 // When there's Ambiguities between regular expressions,
