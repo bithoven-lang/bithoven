@@ -5,3 +5,6 @@ Cargo.lock
 
 # Build artifacts
 target
+
+# DS files
+*.DS_Store
