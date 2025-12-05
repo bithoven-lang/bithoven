@@ -43,7 +43,8 @@ label {
   margin-bottom: 0.5rem;
 }
 
-.editorSection, .outputSection {
+.editorSection,
+.outputSection {
   margin-bottom: 1.5rem;
 }
 
@@ -54,7 +55,7 @@ label {
   border: 1px solid #374151;
   border-radius: 8px;
   padding: 1rem;
-  font-family: 'Fira Code', 'Courier New', monospace;
+  font-family: "Fira Code", "Courier New", monospace;
   font-size: 0.9rem;
   color: #e5e7eb;
   resize: vertical;
@@ -96,7 +97,7 @@ label {
   border: 1px solid #374151;
   border-radius: 8px;
   padding: 1rem;
-  font-family: 'Fira Code', 'Courier New', monospace;
+  font-family: "Fira Code", "Courier New", monospace;
   font-size: 0.85rem;
   color: #d1d5db;
   white-space: pre-wrap; /* Allows text to wrap */
@@ -110,9 +111,9 @@ label {
   overflow: hidden;
 }
 .cm-editor:focus-within {
-   outline: none;
-   border-color: #3b82f6;
-   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
 }
 
 /* In app.css */
@@ -132,13 +133,33 @@ label {
 
 
 /* --- Syntax Highlighting --- */
-.cm-string { color: #98c379; }           /* Soft Green */
-.cm-number, .cm-bool { color: #d19a66; } /* Warm Orange */
-.cm-control, .cm-pragma, .cm-statement { color: #c678dd; } /* Soft Purple */
-.cm-type { color: #e5c07b; }             /* Soft Gold */
-.cm-operation { color: #56b6c2; }        /* Cool Cyan */
-.cm-crypto, .cm-byte { color: #61afef; } /* Rich Blue */
-.cm-comment { 
+.cm-comment {
+  color: #6a737d; /* Standard grey comment color */
+  font-style: italic;
+}
+.cm-string {
+  color: #98c379;
+} /* Soft Green */
+.cm-number,
+.cm-bool {
+  color: #d19a66;
+} /* Warm Orange */
+.cm-control,
+.cm-pragma,
+.cm-statement {
+  color: #c678dd;
+} /* Soft Purple */
+.cm-type {
+  color: #e5c07b;
+} /* Soft Gold */
+.cm-operation {
+  color: #56b6c2;
+} /* Cool Cyan */
+.cm-crypto,
+.cm-byte {
+  color: #61afef;
+} /* Rich Blue */
+.cm-comment {
   color: #7f848e; /* Muted Grey */
   font-style: italic;
 }
