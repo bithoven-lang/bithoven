@@ -163,3 +163,25 @@ label {
   color: #7f848e; /* Muted Grey */
   font-style: italic;
 }
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px; /* Space between the "Online" badge and the GitHub link */
+}
+
+.githubLink {
+  display: flex; /* Aligns SVG and Text horizontally */
+  align-items: center; /* Vertically centers them */
+  gap: 8px; /* Space between the icon and the word "GitHub" */
+
+  color: #e2e8f0; /* Light grey/white color */
+  text-decoration: none; /* Removes underline */
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: opacity 0.2s;
+}
+
+.githubLink:hover {
+  opacity: 0.8;
+}
