@@ -16,6 +16,10 @@ Write readable, auditable code with modern control flow (`if/else`), named varia
 
 ## 🚀 Quick Start
 
+### Web IDE
+
+**Bithoven Online IDE**, see: https://bithoven-lang.github.io/bithoven/ide/
+
 ### Installation
 
 ```bash
